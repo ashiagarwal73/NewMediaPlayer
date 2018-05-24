@@ -46,73 +46,33 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
     TelephonyManager telephonyManager;
     PhoneStateListener phoneStateListener;
     AudioManager.OnAudioFocusChangeListener onAudioFocusChangeListener;
-    int permissionGranted = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        serviceIntent = new Intent(MainActivity.this, NotificationService.class);
-        serviceIntent.setAction(Constants.ACTION.STARTFOREGROUND_ACTION);
-        startService(serviceIntent);
-        bindService(serviceIntent, mConnection, Context.BIND_AUTO_CREATE);
-        customMediaController = findViewById(R.id.customMediaController);
-        progressBar = findViewById(R.id.progressBar);
-        playPauseButton = findViewById(R.id.bttn);
-        forwardButton = findViewById(R.id.forward);
-        rewindButton = findViewById(R.id.rewind);
-        timer = findViewById(R.id.timer);
-        seekBar = findViewById(R.id.seekBar);
+        startBindService();
+        initialiseAllView();
         handler.postDelayed(runnable, 1000);
         setNotification();
-        askForPermission(Manifest.permission.READ_PHONE_STATE, CALL);
-        if (permissionGranted == 1) {
-            phoneStateListener = new PhoneStateListener() {
-                @Override
-                public void onCallStateChanged(int state, String incomingNumber) {
-                    if (state == TelephonyManager.CALL_STATE_RINGING) {
-                        //Incoming call: Pause music
-                        pauseMusic();
-                    } else if (state == TelephonyManager.CALL_STATE_IDLE) {
-                        //Not in call: Play music
-                        if (mediaPlayer != null && !mediaPlayer.isPlaying())
-                            playMusic();
-                    } else if (state == TelephonyManager.CALL_STATE_OFFHOOK) {
-                        //A call is dialing, active or on hold
-                        pauseMusic();
-                    }
-                    super.onCallStateChanged(state, incomingNumber);
-                }
-            };
-            telephonyManager = (TelephonyManager) this
-                    .getSystemService(Context.TELEPHONY_SERVICE);
-            if (telephonyManager != null) {
-                telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
-            }
-        }
-        onAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
-            @Override
-            public void onAudioFocusChange(int focusChange) {
-                switch (focusChange) {
-                    case AudioManager.AUDIOFOCUS_GAIN:
-                        Log.i("", "AUDIOFOCUS_GAIN");
-                        playMusic();
-                        break;
-                    case AudioManager.AUDIOFOCUS_LOSS:
-                        pauseMusic();
-                        break;
-                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                        pauseMusic();
-                        break;
-                }
-            }
-        };
-        AudioManager audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
-        // Request audio focus for play back
-        if (audioManager != null) {
-            audioManager.requestAudioFocus(onAudioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-        }
+        callHandler();
+        audioHandler();
     }
+
+    Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mediaPlayer != null) {
+                if (mediaPlayer.isPlaying()) {
+                    playPauseButton.setBackgroundResource(R.drawable.ic_pause_circle_outline_black_24dp);
+                } else {
+                    playPauseButton.setBackgroundResource(R.drawable.ic_play_circle_outline_black_24dp);
+                }
+                updateTimer();
+            }
+            handler.postDelayed(runnable, 1000);
+        }
+    };
 
     @Override
     public void updateClient(final MediaPlayer mediaPlayer) {
@@ -151,43 +111,9 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
         }
     }
 
-
-    Runnable runnable = new Runnable() {
-        @Override
-        public void run() {
-            if (mediaPlayer != null) {
-                if (mediaPlayer.isPlaying()) {
-                    playPauseButton.setBackgroundResource(R.drawable.ic_pause_circle_outline_black_24dp);
-                } else {
-                    playPauseButton.setBackgroundResource(R.drawable.ic_play_circle_outline_black_24dp);
-                }
-                int currentPosition = mediaPlayer.getCurrentPosition();
-                seekBar.setProgress(currentPosition);
-                int t = currentPosition / 1000;
-                int min = t / 60;
-                int sec = t % 60;
-                if (min < 10) {
-                    if (sec < 10) {
-                        String string = "0" + min + ":0" + sec;
-                        timer.setText(string);
-                    } else {
-                        String string = "0" + min + ":" + sec;
-                        timer.setText(string);
-                    }
-                }
-                if (min >= 10) {
-                    if (sec < 10) {
-                        String string = min + ":0" + sec;
-                        timer.setText(string);
-                    } else {
-                        String string = min + ":" + sec;
-                        timer.setText(string);
-                    }
-                }
-            }
-            handler.postDelayed(runnable, 1000);
-        }
-    };
+    public void finishActivity() {
+        finish();
+    }
 
     public void onForwardButtonClick(View view) {
         if (mediaPlayer != null) {
@@ -251,15 +177,21 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
         }
     };
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopService(serviceIntent);
-        unbindService(mConnection);
-        if (telephonyManager != null) {
-            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
-        }
+    public void startBindService() {
+        serviceIntent = new Intent(MainActivity.this, NotificationService.class);
+        serviceIntent.setAction(Constants.ACTION.STARTFOREGROUND_ACTION);
+        startService(serviceIntent);
+        bindService(serviceIntent, mConnection, Context.BIND_AUTO_CREATE);
+    }
 
+    public void initialiseAllView() {
+        customMediaController = findViewById(R.id.customMediaController);
+        progressBar = findViewById(R.id.progressBar);
+        playPauseButton = findViewById(R.id.bttn);
+        forwardButton = findViewById(R.id.forward);
+        rewindButton = findViewById(R.id.rewind);
+        timer = findViewById(R.id.timer);
+        seekBar = findViewById(R.id.seekBar);
     }
 
     public void updateNotification() {
@@ -299,23 +231,106 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
         notificationLayout.setOnClickPendingIntent(R.id.forwardnotify, pendingForwardIntent);
     }
 
-    private void askForPermission(String permission, Integer requestCode) {
-        if (ContextCompat.checkSelfPermission(MainActivity.this, permission) != PackageManager.PERMISSION_GRANTED) {
+    public void callHandler() {
+        int permissionGranted = askForPermission(Manifest.permission.READ_PHONE_STATE, CALL);
+        if (permissionGranted == 1) {
+            phoneStateListener = new PhoneStateListener() {
+                @Override
+                public void onCallStateChanged(int state, String incomingNumber) {
+                    if (state == TelephonyManager.CALL_STATE_RINGING) {
+                        //Incoming call: Pause music
+                        pauseMusic();
+                    } else if (state == TelephonyManager.CALL_STATE_IDLE) {
+                        //Not in call: Play music
+                        if (mediaPlayer != null && !mediaPlayer.isPlaying())
+                            playMusic();
+                    } else if (state == TelephonyManager.CALL_STATE_OFFHOOK) {
+                        //A call is dialing, active or on hold
+                        pauseMusic();
+                    }
+                    super.onCallStateChanged(state, incomingNumber);
+                }
+            };
+            telephonyManager = (TelephonyManager) this
+                    .getSystemService(Context.TELEPHONY_SERVICE);
+            if (telephonyManager != null) {
+                telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+            }
+        }
+    }
 
+    public void audioHandler() {
+        onAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+            @Override
+            public void onAudioFocusChange(int focusChange) {
+                switch (focusChange) {
+//                    case AudioManager.AUDIOFOCUS_GAIN:
+//                        Log.i("", "AUDIOFOCUS_GAIN");
+//                        playMusic();
+//                        break;
+                    case AudioManager.AUDIOFOCUS_LOSS:
+                        pauseMusic();
+                        break;
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                        pauseMusic();
+                        break;
+                }
+            }
+        };
+        AudioManager audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
+        // Request audio focus for play back
+        if (audioManager != null) {
+            audioManager.requestAudioFocus(onAudioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+        }
+    }
+
+    public void updateTimer() {
+        int currentPosition = mediaPlayer.getCurrentPosition();
+        seekBar.setProgress(currentPosition);
+        int t = currentPosition / 1000;
+        int min = t / 60;
+        int sec = t % 60;
+        if (min < 10) {
+            if (sec < 10) {
+                String string = "0" + min + ":0" + sec;
+                timer.setText(string);
+            } else {
+                String string = "0" + min + ":" + sec;
+                timer.setText(string);
+            }
+        }
+        if (min >= 10) {
+            if (sec < 10) {
+                String string = min + ":0" + sec;
+                timer.setText(string);
+            } else {
+                String string = min + ":" + sec;
+                timer.setText(string);
+            }
+        }
+    }
+
+    private int askForPermission(String permission, Integer requestCode) {
+        if (ContextCompat.checkSelfPermission(MainActivity.this, permission) != PackageManager.PERMISSION_GRANTED) {
             // Should we show an explanation?
             if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, permission)) {
-
                 //This is called if user has denied the permission before
                 //In this case I am just asking the permission again
                 ActivityCompat.requestPermissions(MainActivity.this, new String[]{permission}, requestCode);
-
-            } else {
-
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{permission}, requestCode);
             }
         } else {
-            permissionGranted = 1;
+            return 1;
         }
+        return 0;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (telephonyManager != null) {
+            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
+        }
+
     }
 
 }

@@ -6,6 +6,7 @@ public class Constants {
         String PREV_ACTION = "prev";
         String PLAY_ACTION = "play";
         String NEXT_ACTION = "next";
+        String CLOSE = "close";
         String STARTFOREGROUND_ACTION = "startforeground";
     }
 
