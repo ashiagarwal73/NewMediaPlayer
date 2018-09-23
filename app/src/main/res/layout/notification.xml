@@ -3,15 +3,6 @@
     android:id="@+id/noifylayout"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
-
-    <ImageView
-        android:id="@+id/closenotify"
-        android:layout_width="25dp"
-        android:layout_height="25dp"
-        android:layout_alignEnd="@+id/mediaPlayerLayout"
-        android:layout_alignRight="@+id/mediaPlayerLayout"
-        android:src="@drawable/ic_close_black_24dp" />
-
     <LinearLayout
         android:id="@+id/mediaPlayerLayout"
         android:layout_width="match_parent"

@@ -37,6 +37,7 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
     Button playPauseButton, forwardButton, rewindButton;
     SeekBar seekBar;
     TextView timer;
+    ProgressBar loader;
     ProgressBar progressBar;
     Handler handler = new Handler();
     RemoteViews notificationLayout;
@@ -51,12 +52,12 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        startBindService();
-        initialiseAllView();
-        handler.postDelayed(runnable, 1000);
-        setNotification();
-        callHandler();
-        audioHandler();
+        startBindService();//start background service to control music while app is running in background
+        initialiseAllView();//iniatialise all UI part
+        handler.postDelayed(runnable, 1000);//update progress of song
+        setNotification();// show controllers in notification bar
+        callHandler();//to handle phone calls in between
+        audioHandler();// to handle another app playing song in between
     }
 
     Runnable runnable = new Runnable() {
@@ -73,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
             handler.postDelayed(runnable, 1000);
         }
     };
-
+    //callback of controllers from notification bar
     @Override
     public void updateClient(final MediaPlayer mediaPlayer) {
         this.mediaPlayer = mediaPlayer;
@@ -109,10 +110,6 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
                 }
             });
         }
-    }
-
-    public void finishActivity() {
-        finish();
     }
 
     public void onForwardButtonClick(View view) {
@@ -187,6 +184,7 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
     public void initialiseAllView() {
         customMediaController = findViewById(R.id.customMediaController);
         progressBar = findViewById(R.id.progressBar);
+        loader=findViewById(R.id.progress);
         playPauseButton = findViewById(R.id.bttn);
         forwardButton = findViewById(R.id.forward);
         rewindButton = findViewById(R.id.rewind);
@@ -264,10 +262,6 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
             @Override
             public void onAudioFocusChange(int focusChange) {
                 switch (focusChange) {
-//                    case AudioManager.AUDIOFOCUS_GAIN:
-//                        Log.i("", "AUDIOFOCUS_GAIN");
-//                        playMusic();
-//                        break;
                     case AudioManager.AUDIOFOCUS_LOSS:
                         pauseMusic();
                         break;
@@ -286,6 +280,10 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
 
     public void updateTimer() {
         int currentPosition = mediaPlayer.getCurrentPosition();
+        if(currentPosition!=0)
+        {
+            loader.setVisibility(View.GONE);
+        }
         seekBar.setProgress(currentPosition);
         int t = currentPosition / 1000;
         int min = t / 60;
@@ -327,6 +325,7 @@ public class MainActivity extends AppCompatActivity implements NotificationServi
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopService(serviceIntent);
         if (telephonyManager != null) {
             telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
         }

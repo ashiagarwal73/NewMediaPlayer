@@ -25,11 +25,8 @@ public class NotificationService extends Service {
     RemoteViews notificationLayout;
     NotificationManagerCompat notificationManager;
     private final IBinder mBinder = new LocalBinder();
-    Handler handler = new Handler();
     PendingIntent pendingIntent;
-    int x = 0;
-    String url = "Enter Url"; // your URL here
-
+    String url = "https://www.betezda.com/songs/English/audio/God%20is%20here.mp3"; // your URL here
     @Override
     public IBinder onBind(Intent intent) {
         return mBinder;
@@ -111,12 +108,6 @@ public class NotificationService extends Service {
                     mediaPlayer.seekTo(pos + 2000);
                     break;
                 }
-                case Constants.ACTION.CLOSE: {
-                    activity.finishActivity();
-                    mediaPlayer.stop();
-                    notificationManager.cancel(1);
-                    stopSelf();
-                }
             }
         }
     }
@@ -144,11 +135,6 @@ public class NotificationService extends Service {
         PendingIntent pendingForwardIntent = PendingIntent.getService(this, 0,
                 forwardIntent, 0);
         notificationLayout.setOnClickPendingIntent(R.id.forwardnotify, pendingForwardIntent);
-        Intent closeIntent = new Intent(this, NotificationService.class);
-        closeIntent.setAction(Constants.ACTION.CLOSE);
-        PendingIntent pendingCloseIntent = PendingIntent.getService(this, 0,
-                closeIntent, 0);
-        notificationLayout.setOnClickPendingIntent(R.id.closenotify, pendingCloseIntent);
         updateNotification();
     }
 
@@ -172,7 +158,5 @@ public class NotificationService extends Service {
 
     public interface Callbacks {
         void updateClient(MediaPlayer mediaPlayer);
-
-        void finishActivity();
     }
 }
